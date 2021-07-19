@@ -1,95 +1,146 @@
 # include "so_long.h"
 # include "get_next_line.h"
 
-void        mk_one_pixel(void *mlx_ptr, void *win_ptr, void *img_ptr, char **p)
+void		raises_collectible(void *mlx_ptr, void *win_ptr, int x, int y)
+{
+	void	*img_ptr;
+	int		img_width;
+	int		img_height;
+
+	img_ptr = mlx_xpm_file_to_image(mlx_ptr, "ItemsInsect.xpm", &img_width, &img_height);
+	mlx_put_image_to_window_scale(mlx_ptr, win_ptr, img_ptr, 64, 0, 32, 32, x, y, 64, 64, 0xFFFFFFFF);
+}
+
+void		raises_character(void *mlx_ptr, void *win_ptr, int x, int y)
+{
+	void	*img_ptr;
+	int		img_width;
+	int		img_height;
+
+	img_ptr = mlx_xpm_file_to_image(mlx_ptr, "character.xpm", &img_width, &img_height);	
+	mlx_put_image_to_window_scale(mlx_ptr, win_ptr, img_ptr, 0, 0, 48, 48, x, y, 64, 64, 0xFFFFFFFF);
+}
+
+void        create_map(t_important *all)
 {
 	t_info	info;
 
-	find_info(&info, p);
-	printf("%d %d\n", info.x, info.y);
+	find_info(&info, all->p);
 
 	for (int i = 0; i < info.y; i++)
 	{
 		for (int j = 0; j < info.x; j++)
 		{
-			if (p[i][j] == '0') // empty space
-				mlx_put_image_to_window_scale(mlx_ptr, win_ptr, img_ptr, 32, 64, 32, 32, 64 * j, 64 * i, 65, 65, 0x81DAF5);
-			else if (p[i][j] == '1') // wall
-				mlx_put_image_to_window_scale(mlx_ptr, win_ptr, img_ptr, 32, 64, 32, 32, 64 * j, 64 * i, 65, 65, 0x585858);
-			else if (p[i][j] == 'C') // collectible
-				mlx_put_image_to_window_scale(mlx_ptr, win_ptr, img_ptr, 32, 64, 32, 32, 64 * j, 64 * i, 65, 65, 0xF5A9F2);
-			else if (p[i][j] == 'E') // map exit
-				mlx_put_image_to_window_scale(mlx_ptr, win_ptr, img_ptr, 32, 64, 32, 32, 64 * j, 64 * i, 65, 65, 0xFFFF00);
-			else if (p[i][j] == 'P') // starting point
-				mlx_put_image_to_window_scale(mlx_ptr, win_ptr, img_ptr, 32, 64, 32, 32, 64 * j, 64 * i, 65, 65, 0x0000FF00);
+			if (all->p[i][j] == '0')
+				mlx_put_image_to_window_scale(all->mlx_ptr, all->win_ptr, all->img_ptr, 32, 64, 32, 32, 64 * j, 64 * i, 65, 65, 0x81DAF5);
+			else if (all->p[i][j] == '1')
+				mlx_put_image_to_window_scale(all->mlx_ptr, all->win_ptr, all->img_ptr, 32, 64, 32, 32, 64 * j, 64 * i, 65, 65, 0x585858);
+			else if (all->p[i][j] == 'C')
+			{
+				mlx_put_image_to_window_scale(all->mlx_ptr, all->win_ptr, all->img_ptr, 32, 64, 32, 32, 64 * j, 64 * i, 65, 65, 0x81DAF5);
+				raises_collectible(all->mlx_ptr, all->win_ptr, 64 * j, 64 * i);
+				all->num_collectibles++;
+			}
+			else if (all->p[i][j] == 'E')
+			{
+				mlx_put_image_to_window_scale(all->mlx_ptr, all->win_ptr, all->img_ptr, 32, 64, 32, 32, 64 * j, 64 * i, 65, 65, 0xFFFF00);
+				all->num_exit++;
+			}
+			else if (all->p[i][j] == 'P')
+			{
+				all->loc_character.x = 64 * j;
+				all->loc_character.y = 64 * i;
+				all->num_start++;
+				mlx_put_image_to_window_scale(all->mlx_ptr, all->win_ptr, all->img_ptr, 32, 64, 32, 32, 64 * j, 64 * i, 65, 65, 0x81DAF5);
+				raises_character(all->mlx_ptr, all->win_ptr, 64 * j, 64 * i);
+			}
 		}
 	}
 }
 
-int	main(int argc, char **argv)
+char	**make_and_return_p(char *argv)
 {
-	void	*mlx_ptr;
-	void	*win_ptr;
-	t_data	img;
-
-	void	*img_get;
-	int		img_height;
-	int		img_width;
-	char	**p;
-	char	*tmp;
-
 	int		fd;
-	t_info	info;
+	char	*tmp;
+	int		i;
+	char	**p;
 
-	// that connects you to the Mac's graphical server 
-	mlx_ptr = mlx_init();
-
-	img_get = mlx_xpm_file_to_image(mlx_ptr, "../IceTileset.xpm", &img_width, &img_height);
-	// mlx_put_image_to_window(mlx_ptr, win_ptr, img_get, 200, 300); //이미지를 윈도우에 올린다.
-
-	// int mlx_put_image_to_window_scale(void *mlx_ptr, void *win_ptr, void *img_ptr, int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh, unsigned int color);
-	//mlx_put_image_to_window_scale(mlx_ptr, win_ptr, img_get, 32, 64, 32, 32, 0, 0, 1280, 640, 0x2465FE);
-
-	fd = open(argv[1], O_RDONLY);
+	fd = open(argv, O_RDONLY);
 	if (fd < 0)
-	{
-		perror("file");
-		exit(1);
-	}
-
-	int	i = 0;
-
-	// while ((get_next_line(fd, &tmp)))
-	// 	i++;
-	// p = (char**)malloc(sizeof(char*) * (i + 1));
-
+		deal_error("file");
+	i = 0;
+	while ((get_next_line(fd, &tmp)))
+		i++;
+	p = (char**)malloc(sizeof(char*) * (i + 1));
+	close(fd);
+	fd = open(argv, O_RDONLY);
+	if (fd < 0)
+		deal_error("file");
+	i = 0;
 	while ((get_next_line(fd, &p[i])))
 		i++;
 	p[i] = 0;
+	return (p);
+}
 
-	find_info(&info, p);
-	printf("%d %d\n", info.x, info.y);
+void	init_all(t_important *all, t_info info)
+{
+	all->mlx_ptr = mlx_init();
+	all->img_ptr = mlx_xpm_file_to_image(all->mlx_ptr, "IceTileset.xpm", &all->img.width, &all->img.height);
+	all->win_ptr = mlx_new_window(all->mlx_ptr, 64 * info.x, 64 * info.y, "hello world");
+	all->count = 0;
+	all->get_collectibles = 0;
+	all->num_collectibles = 0;
+	all->num_start = 0;
+	all->num_exit = 0;
+}
 
-	win_ptr = mlx_new_window(mlx_ptr, 64 * info.x, 64 * info.y, "hello world");
+void	map_validation_step_1(t_important *all, t_info info)
+{
+	int		i;
+	int		j;
 
-	mk_one_pixel(mlx_ptr, win_ptr, img_get, p);
+	i = -1;
+	while (++i < info.x)
+		if (all->p[0][i] != '1')
+			deal_error("ERROR\n");
+	i = -1;
+	while (++i < info.x)
+		if (all->p[info.y - 1][i] != '1')
+			deal_error("ERROR\n");
+	i = -1;
+	while (++i < info.y)
+		if (all->p[i][0] != '1')
+			deal_error("ERROR\n");
+	i = -1;
+	while (++i < info.y)
+		if (all->p[i][info.x - 1] != '1')
+			deal_error("ERROR\n");
+}
 
+void	check_if_map_validated(t_important *all, t_info info)
+{
+	map_validation_step_1(all, info);
+	if (all->num_collectibles == 0 || all->num_exit == 0 || all->num_start == 0)
+		deal_error("ERROR\n");
+}
 
+int	main(int argc, char **argv)
+{
+	t_important all;
+	t_info	info;
 
-/*
-	img.img = mlx_new_image(mlx_ptr, 500, 500);// 이미지 instance 생성
-	img.addr = mlx_get_data_addr(img.img, &img.bits_per_pixel, &img.line_length, &img.endian);
-	//이미지의 주소 할당
-	for(int i = 0; i < 500 ; i++) {
-		my_mlx_pixel_put(&img, i, i, 0x00FF0000);// 붉은색 선을 대각선으로 그린다.
-		my_mlx_pixel_put(&img, 5, i, 0x00FF0000);// 붉은색 선을 세로으로 그린다.
-		my_mlx_pixel_put(&img, i, 5, 0x00FF0000);// 붉은색 선을 가로으로 그린다.
-	}
-	mlx_put_image_to_window(mlx_ptr, win_ptr, img.img, 0, 0);//이미지를 윈도우에 올린다.
-*/
+	all.p = make_and_return_p(argv[1]);
+	find_info(&info, all.p);
 
-	mlx_hook(win_ptr, X_KEY_PRESS, 0, mlx_key_handle, 0);
-	mlx_hook(win_ptr, X_BUTTON_RED_CROSS, 0, exit_program, 0);
-	mlx_loop(mlx_ptr);
+	init_all(&all, info);
+	create_map(&all);
+	check_if_map_validated(&all, info);
 	
+	//int mlx_loop_hook(void *mlx_ptr, int (*funct_ptr)(), void *param);
+
+	// here's for exit.
+	mlx_hook(all.win_ptr, X_KEY_PRESS, 0, mlx_key_handle, &all);
+	mlx_hook(all.win_ptr, X_BUTTON_RED_CROSS, 0, exit_program, 0);
+	mlx_loop(all.mlx_ptr);
 }
